@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>かぐや姫のすくすく古文〜歴史的仮名遣いマスター〜</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800;900&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'M PLUS Rounded 1c', sans-serif;
+      background: linear-gradient(135deg, #fff0f5 0%, #f0fdf4 100%);
+      min-height: 100vh;
+      user-select: none;
+    }
+
+    /* Floating & Glowing Animations */
+    @keyframes floatCute {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-6px); }
+    }
+    
+    @keyframes sparkleGlow {
+      0%, 100% { opacity: 0.4; transform: scale(0.9); }
+      50% { opacity: 1; transform: scale(1.15); }
+    }
+
+    .animate-float {
+      animation: floatCute 3.2s ease-in-out infinite;
+    }
+
+    .animate-sparkle {
+      animation: sparkleGlow 2.2s ease-in-out infinite;
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      border: 2.5px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 12px 28px -5px rgba(244, 114, 182, 0.25);
+    }
+
+    /* -------------------------------------------------------------
+       KAGUYA IMAGE CROP CONFIGURATION
+       全4人の画像(幅比率 400%:100%)から、各キャラクター1人のみをぴったり表示。
+       ※下部の英語テキスト(1. Infant 等)を除外するため、縦位置・高さを調整。
+    ------------------------------------------------------------- */
+    .kaguya-image-container {
+      width: 110px;
+      height: 155px;
+      position: relative;
+      overflow: hidden;
+      border-radius: 1.25rem;
+      background-color: #fdf2f8;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.06);
+      flex-shrink: 0;
+    }
+
+    .kaguya-cropped-img {
+      position: absolute;
+      /* 元画像全体の高さ・幅を拡大して1人だけを映す設定 */
+      height: 108%; 
+      width: 410%;
+      max-width: none;
+      top: -2%; /* 下の英字ラベルを隠すように少し上寄せ */
+      transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* 各ステージごとの切り抜き位置（左からのパーセンテージ） */
+    /* 0 & 1: 1. Infant (竹の中の赤ちゃん) */
+    .kaguya-stage-0 .kaguya-cropped-img,
+    .kaguya-stage-1 .kaguya-cropped-img {
+      left: 1%;
+    }
+    /* 2: 2. Girl (小さな女の子) */
+    .kaguya-stage-2 .kaguya-cropped-img {
+      left: -99%;
+    }
+    /* 3: 3. Princess (大人の女性) */
+    .kaguya-stage-3 .kaguya-cropped-img {
+      left: -200%;
+    }
+    /* 4: 4. Celestial (天女) */
+    .kaguya-stage-4 .kaguya-cropped-img {
+      left: -302%;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #f472b6;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body class="text-slate-800 antialiased flex flex-col justify-between min-h-screen">
+
+  <!-- TOP HEADER -->
+  <header class="w-full bg-white/85 backdrop-filter blur-md border-b-2 border-pink-100 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center space-x-2.5">
+        <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-pink-400 to-rose-400 flex items-center justify-center text-white text-xl shadow-md">
+          <i class="fa-solid fa-moon"></i>
+        </div>
+        <div>
+          <h1 class="font-extrabold text-lg text-pink-600 leading-tight">かぐや姫のすくすく古文</h1>
+          <p class="text-xs text-slate-500 font-bold">歴史的仮名遣いマスター！</p>
+        </div>
+      </div>
+
+      <button id="home-btn" onclick="showSectionSelect()" class="hidden bg-pink-100 hover:bg-pink-200 text-pink-700 font-bold px-3.5 py-1.5 rounded-full text-sm transition-all duration-200 flex items-center space-x-1.5 shadow-sm active:scale-95">
+        <i class="fa-solid fa-house"></i>
+        <span>ステージ選択</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-2xl w-full mx-auto p-4 flex-grow flex flex-col justify-center">
+
+    <!-- CHARACTER PROGRESS STATUS CARD -->
+    <div id="character-status-card" class="glass-card rounded-3xl p-4 sm:p-5 mb-6 transition-all duration-300">
+      <div class="flex items-center justify-between border-b border-pink-100 pb-2.5 mb-3">
+        <div class="flex items-center space-x-2">
+          <span class="bg-gradient-to-r from-pink-500 to-rose-400 text-white text-xs font-black px-3 py-0.5 rounded-full shadow-sm">KAGUYA STAGE</span>
+          <span id="kaguya-stage-title" class="font-black text-pink-600 text-sm">竹の中に眠るかぐや姫</span>
+        </div>
+        <div class="text-xs font-bold text-slate-500">
+          クリア率: <span id="cleared-count-text" class="text-pink-600 font-black text-lg">0</span> / 4 セクション
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between space-x-3.5 py-1">
+        <!-- Single Kaguya Image Cropped correctly -->
+        <div id="kaguya-frame-box" class="kaguya-image-container kaguya-stage-0 border-2 border-pink-300 shadow-sm animate-float">
+          <img src="kaguya_stages.png.jpg" alt="かぐや姫の成長イラスト" class="kaguya-cropped-img" onerror="this.src='https://placehold.co/400x300/fbcfe8/be185d?text=Kaguya+Image'">
+          <!-- Sparkles Overlay -->
+          <i class="fa-solid fa-sparkles absolute top-1.5 left-1.5 text-amber-300 text-xs animate-sparkle"></i>
+          <i class="fa-solid fa-sparkles absolute bottom-1.5 right-1.5 text-pink-300 text-sm animate-sparkle" style="animation-delay: 1s;"></i>
+        </div>
+
+        <!-- Dialogue & Progress Bar -->
+        <div class="flex-1 flex flex-col justify-center">
+          <div id="kaguya-dialogue" class="bg-white p-3.5 rounded-2xl rounded-tl-none border-2 border-pink-200 text-xs font-bold text-slate-700 shadow-sm relative leading-relaxed min-h-[75px] flex items-center">
+            「すーすー…（竹の中で静かに眠っています）」
+          </div>
+          <div class="mt-3 w-full bg-slate-100 h-3.5 rounded-full overflow-hidden p-0.5 border border-slate-200">
+            <div id="kaguya-progress-bar" class="bg-gradient-to-r from-pink-400 via-rose-400 to-purple-400 h-full rounded-full transition-all duration-500" style="width: 0%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 1: STAGE SELECT SCREEN -->
+    <div id="view-stage-select" class="space-y-4">
+      <div class="text-center mb-2">
+        <h2 class="text-xl font-black text-slate-800">挑戦するセクションを選ぼう！</h2>
+        <p class="text-xs font-bold text-slate-500 mt-0.5">満点（7問全問正解）でクリアすると、かぐや姫が成長するよ✨</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Section 1 -->
+        <button onclick="startSection(1)" class="stage-card border-2 border-pink-200 hover:border-pink-400 bg-white hover:bg-pink-50/60 p-4 rounded-2xl transition-all duration-200 text-left shadow-sm hover:shadow-md flex flex-col justify-between group">
+          <div class="flex justify-between items-start w-full">
+            <span class="bg-pink-100 group-hover:bg-pink-500 group-hover:text-white text-pink-700 text-xs font-black px-2.5 py-1 rounded-lg transition-colors">SECTION 1</span>
+            <span id="badge-sec-1" class="text-xs font-bold text-slate-400">未達成</span>
+          </div>
+          <div class="my-3">
+            <h3 class="font-bold text-slate-800 text-base">基本のハ行の転換</h3>
+            <p class="text-xs text-slate-500 mt-1">いふ、使ひ、たまへ、なほ… など</p>
+          </div>
+          <div class="w-full flex justify-end items-center text-pink-500 font-extrabold text-sm group-hover:translate-x-1 transition-transform">
+            スタート <i class="fa-solid fa-chevron-right ml-1 text-xs"></i>
+          </div>
+        </button>
+
+        <!-- Section 2 -->
+        <button id="btn-sec-2" onclick="startSection(2)" class="stage-card border-2 border-pink-200 hover:border-pink-400 bg-white hover:bg-pink-50/60 p-4 rounded-2xl transition-all duration-200 text-left shadow-sm hover:shadow-md flex flex-col justify-between group">
+          <div class="flex justify-between items-start w-full">
+            <span class="bg-pink-100 group-hover:bg-pink-500 group-hover:text-white text-pink-700 text-xs font-black px-2.5 py-1 rounded-lg transition-colors">SECTION 2</span>
+            <span id="badge-sec-2" class="text-xs font-bold text-slate-400">未達成</span>
+          </div>
+          <div class="my-3">
+            <h3 class="font-bold text-slate-800 text-base">「を・ぢ・づ」とウ音便</h3>
+            <p class="text-xs text-slate-500 mt-1">をのこ、はぢ、うつくしう… など</p>
+          </div>
+          <div class="w-full flex justify-end items-center text-pink-500 font-extrabold text-sm group-hover:translate-x-1 transition-transform">
+            スタート <i class="fa-solid fa-chevron-right ml-1 text-xs"></i>
+          </div>
+        </button>
+
+        <!-- Section 3 -->
+        <button id="btn-sec-3" onclick="startSection(3)" class="stage-card border-2 border-pink-200 hover:border-pink-400 bg-white hover:bg-pink-50/60 p-4 rounded-2xl transition-all duration-200 text-left shadow-sm hover:shadow-md flex flex-col justify-between group">
+          <div class="flex justify-between items-start w-full">
+            <span class="bg-pink-100 group-hover:bg-pink-500 group-hover:text-white text-pink-700 text-xs font-black px-2.5 py-1 rounded-lg transition-colors">SECTION 3</span>
+            <span id="badge-sec-3" class="text-xs font-bold text-slate-400">未達成</span>
+          </div>
+          <div class="my-3">
+            <h3 class="font-bold text-slate-800 text-base">「ゐ・ゑ」と特別な語</h3>
+            <p class="text-xs text-slate-500 mt-1">ゐど、こゑ、ゆゑ、思ひ出… など</p>
+          </div>
+          <div class="w-full flex justify-end items-center text-pink-500 font-extrabold text-sm group-hover:translate-x-1 transition-transform">
+            スタート <i class="fa-solid fa-chevron-right ml-1 text-xs"></i>
+          </div>
+        </button>
+
+        <!-- Section 4 -->
+        <button id="btn-sec-4" onclick="startSection(4)" class="stage-card border-2 border-pink-200 hover:border-pink-400 bg-white hover:bg-pink-50/60 p-4 rounded-2xl transition-all duration-200 text-left shadow-sm hover:shadow-md flex flex-col justify-between group">
+          <div class="flex justify-between items-start w-full">
+            <span class="bg-pink-100 group-hover:bg-pink-500 group-hover:text-white text-pink-700 text-xs font-black px-2.5 py-1 rounded-lg transition-colors">SECTION 4</span>
+            <span id="badge-sec-4" class="text-xs font-bold text-slate-400">未達成</span>
+          </div>
+          <div class="my-3">
+            <h3 class="font-bold text-slate-800 text-base">アウ・イウ・合拗音の音変化</h3>
+            <p class="text-xs text-slate-500 mt-1">やうやう、けふ、くわし… など</p>
+          </div>
+          <div class="w-full flex justify-end items-center text-pink-500 font-extrabold text-sm group-hover:translate-x-1 transition-transform">
+            スタート <i class="fa-solid fa-chevron-right ml-1 text-xs"></i>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <!-- VIEW 2: QUIZ PLAY SCREEN -->
+    <div id="view-quiz" class="hidden space-y-4">
+      <div class="glass-card rounded-3xl p-6 border-2 border-pink-100 relative">
+        
+        <!-- Question Progress Bar Header -->
+        <div class="flex justify-between items-center mb-4">
+          <span id="quiz-sec-title" class="bg-purple-100 text-purple-700 text-xs font-black px-3 py-1 rounded-full">SECTION 1</span>
+          <span id="quiz-question-counter" class="text-xs font-black text-slate-500">第 1 / 7 問</span>
+        </div>
+
+        <!-- Question Prompt -->
+        <div class="text-center py-5 bg-gradient-to-r from-amber-50 via-orange-50 to-pink-50 rounded-2xl border border-amber-100/80 mb-6 shadow-inner">
+          <p class="text-xs font-bold text-amber-700 mb-1">現代仮名遣い（すべてひらがな）に直そう！</p>
+          <div id="quiz-target-word" class="text-3xl md:text-4xl font-black text-slate-800 tracking-wider my-1">いふ</div>
+        </div>
+
+        <!-- Options Grid -->
+        <div id="options-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <!-- Options rendered dynamically -->
+        </div>
+
+        <!-- Feedback Card -->
+        <div id="feedback-card" class="hidden mt-6 p-4 rounded-2xl border-2 transition-all">
+          <div class="flex items-center space-x-2 mb-2">
+            <span id="feedback-icon" class="text-2xl"></span>
+            <h4 id="feedback-title" class="font-extrabold text-lg"></h4>
+          </div>
+          <p id="feedback-explanation" class="text-sm font-bold leading-relaxed text-slate-700 mb-4"></p>
+          <button id="next-btn" onclick="nextQuestion()" class="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-extrabold py-3.5 rounded-xl shadow-md transition-all flex items-center justify-center space-x-2">
+            <span>次の問題へ</span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- VIEW 3: SECTION RESULT SCREEN -->
+    <div id="view-result" class="hidden text-center space-y-6">
+      <div class="glass-card rounded-3xl p-8 border-2 border-pink-200 shadow-xl">
+        <div id="result-icon-container" class="mb-4">
+          <!-- Icon inserted dynamically -->
+        </div>
+        <h2 id="result-title" class="text-2xl font-black text-slate-800 mb-2">結果発表！</h2>
+        <p id="result-score-text" class="text-lg font-bold text-slate-600 mb-6">7 問中 <span id="result-score" class="text-pink-600 font-black text-3xl">7</span> 問正解！</p>
+
+        <div id="result-message-box" class="bg-pink-50 border border-pink-200 p-4.5 rounded-2xl mb-6 text-sm font-bold text-pink-800 leading-relaxed">
+          <!-- Message inserted dynamically -->
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <button onclick="retrySection()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold px-6 py-3.5 rounded-xl transition-all">
+            もう一度挑戦
+          </button>
+          <button onclick="showSectionSelect()" class="bg-pink-500 hover:bg-pink-600 text-white font-extrabold px-8 py-3.5 rounded-xl shadow-md transition-all">
+            ステージ一覧に戻る
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 4: GRAND FINALE VIEW -->
+    <div id="view-finale" class="hidden text-center space-y-6">
+      <div class="glass-card rounded-3xl p-6 sm:p-8 border-4 border-amber-300 bg-gradient-to-b from-amber-50/95 via-pink-50/95 to-purple-50/95 shadow-2xl">
+        <div class="inline-block p-3 bg-gradient-to-tr from-yellow-400 to-amber-300 text-white rounded-full text-3xl shadow-lg animate-bounce mb-2">
+          <i class="fa-solid fa-crown"></i>
+        </div>
+        <h2 class="text-2xl sm:text-3xl font-black text-amber-600 mb-1">全セクション完全制覇！</h2>
+        <p class="text-xs font-bold text-amber-700 uppercase tracking-widest mb-5">✨ Congratulations! ✨</p>
+
+        <!-- Heartfelt Message from Kaguya-hime -->
+        <div class="bg-white/95 border-2 border-pink-200 p-5 sm:p-6 rounded-2xl shadow-inner text-left space-y-3.5 mb-6">
+          <div class="flex items-center space-x-2.5 border-b border-pink-100 pb-3">
+            <span class="text-pink-500 text-xl"><i class="fa-solid fa-heart"></i></span>
+            <h3 class="font-black text-pink-600 text-base">かぐや姫からの感謝メッセージ</h3>
+          </div>
+          <div class="text-sm font-bold leading-relaxed text-slate-700 space-y-3">
+            <p>
+              「最後までいっしょにがんばってくれて、ほんとうにありがとうっ！✨」
+            </p>
+            <p>
+              「最初は竹の中でねむっていた私だけど、あなたが難解な歴史的仮名遣いをひとつずつ丁寧に解き明かしてくれたおかげで、こんなに素敵な天女の姿になることができました！」
+            </p>
+            <p>
+              「古文のことばって、最初はすこし難しく見えるかもしれないけれど、昔の人たちの気持ちや思いが詰まった宝箱なんだよ。あなたが学び抜いた知識は、これから先もあなたの力になってくれるはず！」
+            </p>
+            <p class="text-pink-600 font-extrabold text-right pt-2">
+              〜 あなたのことが大すきなかぐや姫より 🌸 〜
+            </p>
+          </div>
+        </div>
+
+        <button onclick="showSectionSelect()" class="w-full bg-gradient-to-r from-pink-500 via-rose-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white font-black py-4 rounded-2xl shadow-lg transition-all text-base active:scale-95">
+          ステージ選択画面へ戻る
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="w-full text-center py-4 text-xs font-bold text-slate-400 border-t border-slate-100 bg-white/50">
+    中学国語 学習サポートアプリ 〜歴史的仮名遣いを極めよう〜
+  </footer>
+
+  <!-- SCRIPT -->
+  <script>
+    // --- QUESTION DATABASE ---
+    const QUESTION_DATABASE = {
+      1: [
+        {
+          word: "いふ",
+          correct: "いう",
+          options: ["いう", "いふ", "いお", "ゆう"],
+          explanation: "語中・語尾の「は・ひ・ふ・へ・ほ」は「わ・い・う・え・お」に直します。「いふ」→「いう」。"
+        },
+        {
+          word: "使ひ",
+          correct: "つかい",
+          options: ["つかい", "つかひ", "つかわ", "つけい"],
+          explanation: "語中の「ひ」は「い」に直します。「つかひ」→「つかい」。"
+        },
+        {
+          word: "たまへ",
+          correct: "たまえ",
+          options: ["たまえ", "たまへ", "たまわ", "たまお"],
+          explanation: "語中の「へ」は「え」に直します。「たまへ」→「たまえ」。"
+        },
+        {
+          word: "なほ",
+          correct: "なお",
+          options: ["なお", "なほ", "なわ", "のう"],
+          explanation: "語中の「ほ」は「お」に直します。「なほ」→「なお」。"
+        },
+        {
+          word: "あはれ",
+          correct: "あわれ",
+          options: ["あわれ", "あはれ", "ああれ", "あおれ"],
+          explanation: "語中の「は」は「わ」に直します。「あはれ」→「あわれ」。"
+        },
+        {
+          word: "いつはり",
+          correct: "いつわり",
+          options: ["いつわり", "いつはり", "いつあり", "いつおり"],
+          explanation: "語中の「は」は「わ」に直します。「いつはり」→「いつわり」。"
+        },
+        {
+          word: "かへす",
+          correct: "かえす",
+          options: ["かえす", "かへす", "かわす", "こうす"],
+          explanation: "語中の「へ」は「え」に直します。「かへす」→「かえす」。"
+        }
+      ],
+      2: [
+        {
+          word: "をのこ",
+          correct: "おのこ",
+          options: ["おのこ", "をのこ", "おのころ", "おぬこ"],
+          explanation: "「を」は「お」に直します。「をのこ（男性）」→「おのこ」。"
+        },
+        {
+          word: "おそはれたる",
+          correct: "おそわれたる",
+          options: ["おそわれたる", "おそはれたる", "おそあれたる", "おそうれたる"],
+          explanation: "語中の「は」は「わ」に直します。「おそはれたる」→「おそわれたる」。"
+        },
+        {
+          word: "はぢ",
+          correct: "はじ",
+          options: ["はじ", "はぢ", "はじぃ", "はち"],
+          explanation: "「ぢ」は「じ」に直します。「はぢ」→「はじ」。"
+        },
+        {
+          word: "いたづら",
+          correct: "いたずら",
+          options: ["いたずら", "いたづら", "いたつら", "いたじら"],
+          explanation: "「づ」は「ず」に直します。「いたづら」→「いたずら」。"
+        },
+        {
+          word: "なむ",
+          correct: "なん",
+          options: ["なん", "なむ", "なう", "なに"],
+          explanation: "語末の「む」は発音に合わせて「ん」に直します。「なむ」→「なん」。"
+        },
+        {
+          word: "うつくしう",
+          correct: "うつくしゅう",
+          options: ["うつくしゅう", "うつくしう", "うつくしょう", "うつくしお"],
+          explanation: "ウ音便の表記です。「うつくしう」は現代仮名遣いでは「うつくしゅう」と表記します。"
+        },
+        {
+          word: "まゐる",
+          correct: "まいる",
+          options: ["まいる", "まゐる", "まえる", "まわる"],
+          explanation: "「ゐ」は「い」に直します。「まゐる」→「まいる」。"
+        }
+      ],
+      3: [
+        {
+          word: "ゐど",
+          correct: "いど",
+          options: ["いど", "ゐど", "うぃど", "えど"],
+          explanation: "「ゐ」は「い」に直します。「ゐ登」→「いど」。"
+        },
+        {
+          word: "あぢきなし",
+          correct: "あじきなし",
+          options: ["あじきなし", "あぢきなし", "あちきなし", "あじきすし"],
+          explanation: "「ぢ」は「じ」に直します。「あぢきなし」→「あじきなし」。"
+        },
+        {
+          word: "こゑ",
+          correct: "こえ",
+          options: ["こえ", "こゑ", "こわ", "こうぇ"],
+          explanation: "「ゑ」は「え」に直します。「こゑ」→「こえ」。"
+        },
+        {
+          word: "ゆゑ",
+          correct: "ゆえ",
+          options: ["ゆえ", "ゆゑ", "ゆわ", "ゆお"],
+          explanation: "「ゑ」は「え」に直します。「ゆゑ」→「ゆえ」。"
+        },
+        {
+          word: "思ひ出",
+          correct: "おもいで",
+          options: ["おもいで", "おもひで", "おもわれ", "おもうで"],
+          explanation: "語中の「ひ」は「い」に直します。「思ひ出」→「おもいで」。"
+        },
+        {
+          word: "よろづ",
+          correct: "よろず",
+          options: ["よろず", "よろづ", "よろつ", "よろじ"],
+          explanation: "「づ」は「ず」に直します。「よろづ」→「よろず」。"
+        },
+        {
+          word: "いとほし",
+          correct: "いとおし",
+          options: ["いとおし", "いとほし", "いとうし", "いとわし"],
+          explanation: "語中の「ほ」は「お」に直します。「いとほし」→「いとおし」。"
+        }
+      ],
+      4: [
+        {
+          word: "やうやう",
+          correct: "ようよう",
+          options: ["ようよう", "やうやう", "ゆうゆう", "よおよお"],
+          explanation: "「アウ（あう）」の音は「オウ（おう）」に伸ばして変化します。「やうやう」→「ようよう」。"
+        },
+        {
+          word: "きふ",
+          correct: "きゅう",
+          options: ["きゅう", "きふ", "きょう", "きう"],
+          explanation: "「イウ（いふ）」の音は「ユウ（ゆう）」に変化します。「きふ」→「きゅう」。"
+        },
+        {
+          word: "けふ",
+          correct: "きょう",
+          options: ["きょう", "けふ", "けう", "きゅう"],
+          explanation: "「エウ（えふ）」の音は「ヨウ（よう）」に変化します。「けふ」→「きょう」。"
+        },
+        {
+          word: "くわし",
+          correct: "かし",
+          options: ["かし", "くわし", "こうし", "くいし"],
+          explanation: "「くわ・ぐわ（合拗音）」は「か・が」に直します。「くわし」→「かし」（※お菓子の意味）。"
+        },
+        {
+          word: "ぐわん",
+          correct: "がん",
+          options: ["がん", "ぐわん", "ごん", "ぐん"],
+          explanation: "「ぐわ」は「が」に直します。「ぐわん（願）」→「がん」。"
+        },
+        {
+          word: "あつぱれ",
+          correct: "あっぱれ",
+          options: ["あっぱれ", "あつぱれ", "あつばれ", "あわれ"],
+          explanation: "小書きの「っ」を用いて現代語らしく直します。「あつぱれ」→「あっぱれ」。"
+        },
+        {
+          word: "あふぎ",
+          correct: "おうぎ",
+          options: ["おうぎ", "あふぎ", "ゆうぎ", "おおぎ"],
+          explanation: "「アウ（あふ）」は「オウ（おう）」に変化します。「あふぎ」→「おうぎ」。"
+        }
+      ]
+    };
+
+    // --- GAME STATE ---
+    let clearedSections = {
+      1: false,
+      2: false,
+      3: false,
+      4: false
+    };
+
+    let currentSection = 1;
+    let currentQuestions = [];
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let isAnswered = false;
+
+    // --- KAGUYA STAGES CONFIGURATION ---
+    const KAGUYA_STAGES = [
+      {
+        level: 0,
+        title: "竹の中に眠るかぐや姫",
+        dialogue: "「すーすー…（温かい竹の中で静かに眠っています…）」",
+        class: "kaguya-stage-0"
+      },
+      {
+        level: 1,
+        title: "竹の中の小さなかぐや姫",
+        dialogue: "「ふはぁ〜！目を覚ましたよ！光がとってもキレイだね✨」",
+        class: "kaguya-stage-1"
+      },
+      {
+        level: 2,
+        title: "小さな女の子のかぐや姫",
+        dialogue: "「えへへ、見てみて！こんなに大きくなったよ！勉強がんばろうね！」",
+        class: "kaguya-stage-2"
+      },
+      {
+        level: 3,
+        title: "大人の女性になったかぐや姫",
+        dialogue: "「あなたのおかげで、こんなに綺麗に成長することができましたわ。」",
+        class: "kaguya-stage-3"
+      },
+      {
+        level: 4,
+        title: "輝く天女となったかぐや姫",
+        dialogue: "「全問達成おめでとうっ！光り輝く天女になれたよ！本当にありがとう！」",
+        class: "kaguya-stage-4"
+      }
+    ];
+
+    // --- INITIALIZATION ---
+    window.addEventListener('DOMContentLoaded', () => {
+      updateKaguyaDisplay();
+      showSectionSelect();
+    });
+
+    // --- UPDATE KAGUYA DISPLAY ---
+    function updateKaguyaDisplay() {
+      const clearedCount = Object.values(clearedSections).filter(Boolean).length;
+      const stageData = KAGUYA_STAGES[clearedCount];
+
+      // Update Text & Dialogue
+      document.getElementById('kaguya-stage-title').textContent = stageData.title;
+      document.getElementById('kaguya-dialogue').textContent = stageData.dialogue;
+      document.getElementById('cleared-count-text').textContent = clearedCount;
+
+      // Update Crop Image Class
+      const frameBox = document.getElementById('kaguya-frame-box');
+      frameBox.className = `kaguya-image-container ${stageData.class} border-2 border-pink-300 shadow-sm animate-float`;
+
+      // Update Progress Bar %
+      const percent = (clearedCount / 4) * 100;
+      document.getElementById('kaguya-progress-bar').style.width = `${percent}%`;
+
+      // Update Section Badges in Stage Select Screen
+      for (let i = 1; i <= 4; i++) {
+        const badge = document.getElementById(`badge-sec-${i}`);
+        if (badge) {
+          if (clearedSections[i]) {
+            badge.textContent = "★ 満点達成！";
+            badge.className = "text-xs font-black text-emerald-600 bg-emerald-100 px-2.5 py-0.5 rounded-full";
+          } else {
+            badge.textContent = "未達成";
+            badge.className = "text-xs font-bold text-slate-400";
+          }
+        }
+      }
+    }
+
+    // --- NAVIGATION ---
+    function hideAllViews() {
+      document.getElementById('view-stage-select').classList.add('hidden');
+      document.getElementById('view-quiz').classList.add('hidden');
+      document.getElementById('view-result').classList.add('hidden');
+      document.getElementById('view-finale').classList.add('hidden');
+    }
+
+    function showSectionSelect() {
+      hideAllViews();
+      document.getElementById('view-stage-select').classList.remove('hidden');
+      document.getElementById('home-btn').classList.add('hidden');
+      updateKaguyaDisplay();
+    }
+
+    // --- START SECTION QUIZ ---
+    function startSection(secId) {
+      currentSection = secId;
+      const rawQuestions = QUESTION_DATABASE[secId];
+      // Randomize questions
+      currentQuestions = [...rawQuestions].sort(() => Math.random() - 0.5);
+      currentQuestionIndex = 0;
+      score = 0;
+
+      hideAllViews();
+      document.getElementById('view-quiz').classList.remove('hidden');
+      document.getElementById('home-btn').classList.remove('hidden');
+      document.getElementById('quiz-sec-title').textContent = `SECTION ${secId}`;
+
+      renderQuestion();
+    }
+
+    // --- RENDER CURRENT QUESTION ---
+    function renderQuestion() {
+      isAnswered = false;
+      const q = currentQuestions[currentQuestionIndex];
+
+      document.getElementById('quiz-question-counter').textContent = `第 ${currentQuestionIndex + 1} / 7 問`;
+      document.getElementById('quiz-target-word').textContent = q.word;
+
+      const feedbackCard = document.getElementById('feedback-card');
+      feedbackCard.classList.add('hidden');
+
+      const optionsContainer = document.getElementById('options-container');
+      optionsContainer.innerHTML = '';
+
+      // Shuffle options
+      const shuffledOptions = [...q.options].sort(() => Math.random() - 0.5);
+
+      shuffledOptions.forEach((optText) => {
+        const btn = document.createElement('button');
+        btn.className = "option-btn w-full bg-white hover:bg-pink-50 border-2 border-slate-200 hover:border-pink-300 text-slate-800 font-extrabold py-3.5 px-4 rounded-2xl text-lg transition-all shadow-sm hover:shadow active:scale-95 text-center";
+        btn.textContent = optText;
+        btn.onclick = () => checkAnswer(optText, q, btn);
+        optionsContainer.appendChild(btn);
+      });
+    }
+
+    // --- CHECK ANSWER ---
+    function checkAnswer(selectedOpt, q, selectedBtn) {
+      if (isAnswered) return;
+      isAnswered = true;
+
+      const isCorrect = (selectedOpt === q.correct);
+      if (isCorrect) score++;
+
+      const buttons = document.querySelectorAll('.option-btn');
+      buttons.forEach((btn) => {
+        btn.disabled = true;
+        btn.classList.remove('hover:bg-pink-50', 'hover:border-pink-300', 'active:scale-95');
+        if (btn.textContent === q.correct) {
+          btn.classList.add('bg-emerald-100', 'border-emerald-500', 'text-emerald-800');
+        } else if (btn === selectedBtn && !isCorrect) {
+          btn.classList.add('bg-rose-100', 'border-rose-400', 'text-rose-700');
+        } else {
+          btn.classList.add('opacity-50');
+        }
+      });
+
+      const feedbackCard = document.getElementById('feedback-card');
+      const feedbackIcon = document.getElementById('feedback-icon');
+      const feedbackTitle = document.getElementById('feedback-title');
+      const feedbackExplanation = document.getElementById('feedback-explanation');
+
+      feedbackCard.classList.remove('hidden', 'bg-emerald-50', 'border-emerald-200', 'bg-rose-50', 'border-rose-200');
+
+      if (isCorrect) {
+        feedbackCard.classList.add('bg-emerald-50', 'border-emerald-200');
+        feedbackIcon.textContent = '⭕';
+        feedbackTitle.textContent = '大正解！すばらしい！';
+        feedbackTitle.className = 'font-extrabold text-lg text-emerald-700';
+      } else {
+        feedbackCard.classList.add('bg-rose-50', 'border-rose-200');
+        feedbackIcon.textContent = '❌';
+        feedbackTitle.textContent = `ざんねん！正解は「${q.correct}」`;
+        feedbackTitle.className = 'font-extrabold text-lg text-rose-700';
+      }
+
+      feedbackExplanation.textContent = q.explanation;
+    }
+
+    // --- NEXT QUESTION OR SHOW RESULTS ---
+    function nextQuestion() {
+      currentQuestionIndex++;
+      if (currentQuestionIndex < currentQuestions.length) {
+        renderQuestion();
+      } else {
+        showSectionResult();
+      }
+    }
+
+    // --- SHOW SECTION RESULT ---
+    function showSectionResult() {
+      hideAllViews();
+      document.getElementById('view-result').classList.remove('hidden');
+
+      const isPerfect = (score === 7);
+      const iconContainer = document.getElementById('result-icon-container');
+      const resultTitle = document.getElementById('result-title');
+      const resultScore = document.getElementById('result-score');
+      const resultMsg = document.getElementById('result-message-box');
+
+      resultScore.textContent = score;
+
+      if (isPerfect) {
+        clearedSections[currentSection] = true;
+
+        iconContainer.innerHTML = `<div class="text-6xl text-yellow-400 animate-bounce"><i class="fa-solid fa-crown"></i></div>`;
+        resultTitle.textContent = "満点合格！おめでとう！";
+        resultMsg.innerHTML = "✨ PERFECT! すべての問に正解しました！<br>かぐや姫がもっと大きくなったよ！";
+
+        confetti({
+          particleCount: 80,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+
+        const allCleared = Object.values(clearedSections).every(Boolean);
+        if (allCleared) {
+          setTimeout(() => {
+            showFinale();
+          }, 1400);
+          return;
+        }
+
+      } else {
+        iconContainer.innerHTML = `<div class="text-5xl text-pink-400"><i class="fa-solid fa-seedling"></i></div>`;
+        resultTitle.textContent = "おしい！あと少し！";
+        resultMsg.innerHTML = "かぐや姫を成長させるには<b>7問全問正解（満点）</b>が必要だよ！<br>解説をたしかめて、もう一回チャレンジしてみよう！";
+      }
+
+      updateKaguyaDisplay();
+    }
+
+    // --- RETRY SECTION ---
+    function retrySection() {
+      startSection(currentSection);
+    }
+
+    // --- SHOW FINALE SCREEN ---
+    function showFinale() {
+      hideAllViews();
+      document.getElementById('view-finale').classList.remove('hidden');
+      updateKaguyaDisplay();
+
+      confetti({
+        particleCount: 160,
+        spread: 100,
+        origin: { y: 0.5 }
+      });
+    }
+  </script>
+</body>
+</html>
